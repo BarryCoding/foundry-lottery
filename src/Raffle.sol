@@ -10,6 +10,12 @@ pragma solidity ^0.8.19;
 contract Raffle {
     uint256 private immutable i_entranceFee;
 
+    // address payable
+    address payable[] private s_players;
+
+    // event param indexed is for quick search!
+    event EnteredRaffle(address indexed player);
+
     error Raffle__SendMoreToEnterRaffle();
 
     constructor(uint256 entranceFee) {
@@ -28,6 +34,10 @@ contract Raffle {
 
         // refactor2: one line
         if (msg.value < i_entranceFee) revert Raffle__SendMoreToEnterRaffle();
+        // address is diff from address payable
+        s_players.push(payable(msg.sender));
+        // emit a event when contract state change
+        emit EnteredRaffle(msg.sender);
     }
 
     function pickWinner() public {}
