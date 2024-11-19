@@ -10,16 +10,23 @@ pragma solidity ^0.8.19;
 contract Raffle {
     uint256 private immutable i_entranceFee;
 
+    // @dev Duration of the lottery in seconds
+    uint256 private immutable i_interval;
+
     // address payable
     address payable[] private s_players;
+
+    uint256 private s_lastTimestamp;
 
     // event param indexed is for quick search!
     event EnteredRaffle(address indexed player);
 
     error Raffle__SendMoreToEnterRaffle();
 
-    constructor(uint256 entranceFee) {
+    constructor(uint256 entranceFee, uint256 interval) {
         i_entranceFee = entranceFee;
+        i_interval = interval;
+        s_lastTimestamp = block.timestamp;
     }
 
     // more gas efficient: external is better than public
@@ -40,7 +47,12 @@ contract Raffle {
         emit EnteredRaffle(msg.sender);
     }
 
-    function pickWinner() public {}
+    // 1. Get a random number
+    // 2. Use the random number to pick a player
+    // 3. Automatically called
+    function pickWinner() external view {
+        if ((block.timestamp - s_lastTimestamp) < i_interval) revert();
+    }
 
     /** Getter Functions */
 
