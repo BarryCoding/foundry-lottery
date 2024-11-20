@@ -116,6 +116,10 @@ contract Raffle is VRFConsumerBaseV2Plus {
         uint256 requestId,
         uint256[] calldata randomWords
     ) internal override {
+        // CEI: 1 check -> 2 effect -> 3 interactions
+        // Checks: validate inputs and conditions
+
+        // Effects: update states
         uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable winner = s_players[indexOfWinner];
         s_recentWinner = winner;
@@ -123,6 +127,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
         s_lastTimestamp = block.timestamp;
         s_players = new address payable[](0); // reset players
         emit WinnerPicked(winner);
+
+        // Interactions: external calls
         (bool success, ) = winner.call{value: address(this).balance}("");
         if (!success) revert Raffle__TransferFailed();
     }
