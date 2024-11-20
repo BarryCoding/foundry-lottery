@@ -40,7 +40,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     /* Events */
     // event param indexed is for quick search!
-    event EnteredRaffle(address indexed player);
+    event RaffleEntered(address indexed player);
+    event WinnerPicked(address indexed winner);
 
     /* Errors */
     error Raffle__SendMoreToEnterRaffle();
@@ -83,7 +84,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         // address is diff from address payable
         s_players.push(payable(msg.sender));
         // emit a event when contract state change
-        emit EnteredRaffle(msg.sender);
+        emit RaffleEntered(msg.sender);
     }
 
     // 1. Get a random number
@@ -119,6 +120,9 @@ contract Raffle is VRFConsumerBaseV2Plus {
         address payable winner = s_players[indexOfWinner];
         s_recentWinner = winner;
         s_raffleState = RaffleState.OPEN;
+        s_lastTimestamp = block.timestamp;
+        s_players = new address payable[](0); // reset players
+        emit WinnerPicked(winner);
         (bool success, ) = winner.call{value: address(this).balance}("");
         if (!success) revert Raffle__TransferFailed();
     }
