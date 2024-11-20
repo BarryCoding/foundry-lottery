@@ -12,6 +12,13 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
  * @dev It implements Chainlink VRFv2.5 and Chainlink Automation
  */
 contract Raffle is VRFConsumerBaseV2Plus {
+    /* Type declarations */
+    enum RaffleState {
+        OPEN,
+        CALCULATING
+    }
+
+    /* State variables */
     uint256 private immutable i_entranceFee;
 
     // @dev Duration of the lottery in seconds
@@ -22,6 +29,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     address private s_recentWinner;
 
     uint256 private s_lastTimestamp;
+    RaffleState private s_raffleState;
 
     // Chainlink VRF Variables
     bytes32 private immutable i_gasLane;
@@ -30,12 +38,16 @@ contract Raffle is VRFConsumerBaseV2Plus {
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
 
+    /* Events */
     // event param indexed is for quick search!
     event EnteredRaffle(address indexed player);
 
+    /* Errors */
     error Raffle__SendMoreToEnterRaffle();
     error Raffle__TransferFailed();
+    error Raffle__RaffleNotOpen();
 
+    /* Functions */
     constructor(
         uint256 entranceFee,
         uint256 interval,
@@ -51,6 +63,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         i_callbackGasLimit = callbackGasLimit;
 
         s_lastTimestamp = block.timestamp;
+        s_raffleState = RaffleState.OPEN;
     }
 
     // more gas efficient: external is better than public
@@ -65,6 +78,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
         // refactor2: one line
         if (msg.value < i_entranceFee) revert Raffle__SendMoreToEnterRaffle();
+        if (s_raffleState != RaffleState.OPEN) revert Raffle__RaffleNotOpen();
+
         // address is diff from address payable
         s_players.push(payable(msg.sender));
         // emit a event when contract state change
@@ -76,6 +91,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
     // 3. Automatically called
     function pickWinner() external {
         if ((block.timestamp - s_lastTimestamp) < i_interval) revert();
+
+        s_raffleState = RaffleState.CALCULATING;
 
         // s_vrfCoordinator is a state in VRFConsumerBaseV2Plus
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
@@ -101,6 +118,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable winner = s_players[indexOfWinner];
         s_recentWinner = winner;
+        s_raffleState = RaffleState.OPEN;
         (bool success, ) = winner.call{value: address(this).balance}("");
         if (!success) revert Raffle__TransferFailed();
     }
